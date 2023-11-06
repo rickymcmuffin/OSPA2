@@ -46,9 +46,24 @@ static struct file_operations fops =
 		.write = write,
 };
 
-static char global_buffer[BUFFER_SIZE];
-static int buffer_start;
-static int buffer_end;
+typedef struct {
+    int start; // start position in buffer
+    int end; // end position in buffer
+} word_location;
+
+typedef struct {
+    word_location list[BUFFER_SIZE]; // stack of locations of words
+    int ind; // top of stack
+} word_list;
+
+typedef struct {
+    char global_buffer[BUFFER_SIZE];
+    int buffer_start;
+    int buffer_end;
+    word_list words;
+} word_buffer;
+
+static word_buffer global_buffer;
 
 /**
  * Initializes module at installation
@@ -131,8 +146,15 @@ static int close(struct inode *inodep, struct file *filep)
  */
 static ssize_t read(struct file *filep, char *buffer, size_t len, loff_t *offset)
 {
+    size_t ret = len;
+    printk(KERN_INFO "%zu", len);
+    while(len > 0){
+        *buffer = 'a';
+        len--;
+        buffer++;
+    }
 	printk(KERN_INFO "read stub");
-	return 0;
+	return ret;
 }
 
 /*
@@ -140,7 +162,17 @@ static ssize_t read(struct file *filep, char *buffer, size_t len, loff_t *offset
  */
 static ssize_t write(struct file *filep, const char *buffer, size_t len, loff_t *offset)
 {
-    global_buffer[ 
+    // global_buffer[ 
+    word_list[word_list_cur] 
+
+	printk(KERN_INFO "writing length: %zu", len);
+    for(int i = 0; i < len; i++, buffer++){
+        global_buffer[buffer_end] = *buffer; 
+        buffer_end+=1;
+        buffer_end %= BUFFER_SIZE;
+
+    }
 	printk(KERN_INFO "write stub");
 	return len;
 }
+
