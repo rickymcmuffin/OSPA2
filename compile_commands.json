@@ -1,0 +1,14 @@
+[
+  {
+    "arguments": [
+      "/usr/bin/gcc",
+      "-c",
+      "-o",
+      "test",
+      "test.c"
+    ],
+    "directory": "/home/ricky/Documents/OSPA2",
+    "file": "/home/ricky/Documents/OSPA2/test.c",
+    "output": "/home/ricky/Documents/OSPA2/test"
+  }
+]

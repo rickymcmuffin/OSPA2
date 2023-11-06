@@ -4,6 +4,7 @@
  * Class:	COP4600-SP23
  */
 
+#include <stdio.h>
 #include <linux/module.h>	  // Core header for modules.
 #include <linux/device.h>	  // Supports driver model.
 #include <linux/kernel.h>	  // Kernel header for convenient functions.
@@ -105,6 +106,9 @@ void cleanup_module(void)
  */
 static int open(struct inode *inodep, struct file *filep)
 {
+
+
+
 	printk(KERN_INFO "lkmasg1: device opened.\n");
 	return 0;
 }
