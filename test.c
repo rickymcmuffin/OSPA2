@@ -47,18 +47,35 @@ int main(int argc, char *argv[])
         perror("Failed to write the message to the device.");
         return errno;
     }
-
-    printf("Press ENTER to read back from the device...\n");
-    getchar();
-
-    printf("Reading from the device...\n");
-    ret = read(fd, receive, BUFFER_LENGTH); // Read the response from the LKM
-    if (ret < 0)
-    {
-        perror("Failed to read the message from the device.");
-        return errno;
+    
+    for(int i = 0; i < 10; i++){
+        stringToSend[0] = 'a';
+        stringToSend[1] = 'p';
+        stringToSend[2] = 'p';
+        stringToSend[3] = 'l';
+        stringToSend[4] = 'e';
+        stringToSend[5] = i + '0';
+        stringToSend[6] = '\0';
+        ret = write(fd, stringToSend, strlen(stringToSend)); // Send the string to the LKM
+        if (ret < 0)
+        {
+            perror("Failed to write the message to the device.");
+            return errno;
+        }
     }
-    printf("The received message is: [%s]\n", receive);
+    for(int i = 0; i < 11; i++){
+        printf("Press ENTER to read back from the device...\n");
+        getchar();
+
+        printf("Reading from the device...\n");
+        ret = read(fd, receive, BUFFER_LENGTH); // Read the response from the LKM
+        if (ret < 0)
+        {
+            perror("Failed to read the message from the device.");
+            return errno;
+        }
+        printf("The received message is: [%s]\n", receive);
+    }
     printf("End of the program\n");
     return 0;
 }

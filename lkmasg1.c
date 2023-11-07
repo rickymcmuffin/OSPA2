@@ -47,20 +47,9 @@ static struct file_operations fops =
 };
 
 typedef struct {
-    int start; // start position in buffer
-    int end; // end position in buffer
-} word_location;
-
-typedef struct {
-    word_location list[BUFFER_SIZE]; // stack of locations of words
-    int ind; // top of stack
-} word_list;
-
-typedef struct {
     char buffer[BUFFER_SIZE];
     int start;
     int end;
-    word_list words;
 } word_buffer;
 
 static word_buffer g_buffer;
@@ -130,7 +119,6 @@ static int open(struct inode *inodep, struct file *filep)
     (word_buffer){
         .start = 0,
         .end = 0,
-        .words.ind = 0
     };
 	printk(KERN_INFO "lkmasg1: device opened.\n");
 	return 0;
@@ -150,26 +138,21 @@ static int close(struct inode *inodep, struct file *filep)
  */
 static ssize_t read(struct file *filep, char *buffer, size_t len, loff_t *offset)
 {
-    // size_t ret = len;
-    // printk(KERN_INFO "%zu", len);
-    // while(len > 0){
-    //     *buffer = 'a';
-    //     len--;
-    //     buffer++;
-    // }
-    //
-    if(g_buffer.words.ind == 0){
-        return 0;
-    }
     ssize_t ret = 0;
-    word_location loc = g_buffer.words.list[--g_buffer.words.ind];
-    while(g_buffer.start != loc.end){
+
+    while(g_buffer.start != g_buffer.end && g_buffer.buffer[g_buffer.start] != '\0'){
         *buffer = g_buffer.buffer[g_buffer.start++];
         g_buffer.start %= BUFFER_SIZE;
         buffer++;
+        ret++;
+    }
+    *buffer = '\0';
+    if(g_buffer.start != g_buffer.end){
+        g_buffer.start++;
+        g_buffer.start %= BUFFER_SIZE;
+        ret++;
     }
 
-	printk(KERN_INFO "read stub");
 	return ret;
 }
 
@@ -186,12 +169,10 @@ static ssize_t write(struct file *filep, const char *buffer, size_t len, loff_t 
     //     return 0;
     // }
     //
-    word_location newWord;
     int i;
-    newWord.start = g_buffer.end;
 
 	printk(KERN_INFO "writing length: %zu", len);
-    for(i = 0; i < len; i++, buffer++){
+    for(i = 0; i < len + 1 && *buffer != '\0'; i++, buffer++){
         if((g_buffer.end + 1) % BUFFER_SIZE == g_buffer.start){ // when buffer is full, no more writing.
             break;
         }
@@ -200,9 +181,11 @@ static ssize_t write(struct file *filep, const char *buffer, size_t len, loff_t 
         g_buffer.end %= BUFFER_SIZE;
 
     }
-    newWord.end = g_buffer.end;
-    g_buffer.words.list[g_buffer.words.ind] = newWord;
-    g_buffer.words.ind++;
+    g_buffer.buffer[g_buffer.end] = '\0';
+    if((g_buffer.end+1) % BUFFER_SIZE != g_buffer.start){
+        g_buffer.end+=1;
+    }
+    g_buffer.end %= BUFFER_SIZE;
 	printk(KERN_INFO "write stub");
 	return i;
 }
