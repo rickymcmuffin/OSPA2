@@ -57,13 +57,13 @@ typedef struct {
 } word_list;
 
 typedef struct {
-    char global_buffer[BUFFER_SIZE];
-    int buffer_start;
-    int buffer_end;
+    char buffer[BUFFER_SIZE];
+    int start;
+    int end;
     word_list words;
 } word_buffer;
 
-static word_buffer global_buffer;
+static word_buffer g_buffer;
 
 /**
  * Initializes module at installation
@@ -126,8 +126,12 @@ void cleanup_module(void)
 static int open(struct inode *inodep, struct file *filep)
 {
       
-    buffer_start = 0;
-    buffer_end = 0;
+    global_buffer = 
+    (word_buffer){
+        .buffer_start = 0,
+        .buffer_end = 0,
+        .words.ind = 0
+    };
 	printk(KERN_INFO "lkmasg1: device opened.\n");
 	return 0;
 }
@@ -146,15 +150,16 @@ static int close(struct inode *inodep, struct file *filep)
  */
 static ssize_t read(struct file *filep, char *buffer, size_t len, loff_t *offset)
 {
-    size_t ret = len;
-    printk(KERN_INFO "%zu", len);
-    while(len > 0){
-        *buffer = 'a';
-        len--;
-        buffer++;
-    }
+    // size_t ret = len;
+    // printk(KERN_INFO "%zu", len);
+    // while(len > 0){
+    //     *buffer = 'a';
+    //     len--;
+    //     buffer++;
+    // }
+
 	printk(KERN_INFO "read stub");
-	return ret;
+	return 0;
 }
 
 /*
@@ -162,17 +167,32 @@ static ssize_t read(struct file *filep, char *buffer, size_t len, loff_t *offset
  */
 static ssize_t write(struct file *filep, const char *buffer, size_t len, loff_t *offset)
 {
-    // global_buffer[ 
-    word_list[word_list_cur] 
+    // this catastrophe checks if there is space in the buffer
+    // if((g_buffer.start > g_buffer.end && g_buffer.start - g_buffer.end < len)
+    //         || (g_buffer.start <= g_buffer.end && BUFFER_SIZE + g_buffer.start - g_buffer.end < len)){
+    //
+	   //  printk(KERN_INFO "error writing");
+    //     return 0;
+    // }
+    //
+    word_location newWord;
+    int i;
+    newWord.start = g_buffer.end;
 
 	printk(KERN_INFO "writing length: %zu", len);
-    for(int i = 0; i < len; i++, buffer++){
-        global_buffer[buffer_end] = *buffer; 
-        buffer_end+=1;
-        buffer_end %= BUFFER_SIZE;
+    for(i = 0; i < len; i++, buffer++){
+        if((g_buffer.end + 1) % BUFFER_SIZE == g_buffer.start){ // when buffer is full, no more writing.
+            break;
+        }
+        g_buffer.buffer[g_buffer.end] = *buffer; 
+        g_buffer.end+=1;
+        g_buffer.end %= BUFFER_SIZE;
 
     }
+    newWord.end = g_buffer.end;
+    g_buffer.words.ind++;
+    g_buffer.words.list[g_buffer.words.ind] = newWord;
 	printk(KERN_INFO "write stub");
-	return len;
+	return i;
 }
 
