@@ -49,13 +49,25 @@ int main(int argc, char *argv[])
     }
     
     for(int i = 0; i < 10; i++){
-        stringToSend[0] = 'a';
-        stringToSend[1] = 'p';
+        if(i == 3 || i == 7){
+            printf("Reading from the device...\n");
+            ret = read(fd, receive, BUFFER_LENGTH); // Read the response from the LKM
+            if (ret < 0)
+            {
+                perror("Failed to read the message from the device.");
+                return errno;
+            }
+            printf("The received message is: [%s]\n", receive);
+        }
+
+        stringToSend[0] = i+'0';
+        stringToSend[1] = 'a';
         stringToSend[2] = 'p';
-        stringToSend[3] = 'l';
-        stringToSend[4] = 'e';
-        stringToSend[5] = i + '0';
+        stringToSend[3] = 'p';
+        stringToSend[4] = 'l';
+        stringToSend[5] = 'e';
         stringToSend[6] = '\0';
+        printf("Writing message to the device [%s].\n", stringToSend);
         ret = write(fd, stringToSend, strlen(stringToSend)); // Send the string to the LKM
         if (ret < 0)
         {

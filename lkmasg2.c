@@ -1,5 +1,5 @@
 /**
- * File:	lkmasg1.c
+ * File:	lkmasg2.c
  * Adapted for Linux 5.15 by: John Aedo
  * Class:	COP4600-SP23
  */
@@ -9,13 +9,14 @@
 #include <linux/kernel.h>	  // Kernel header for convenient functions.
 #include <linux/fs.h>		  // File-system support.
 #include <linux/uaccess.h>	  // User access copy function support.
-#define DEVICE_NAME "lkmasg1" // Device name.
+#define DEVICE_NAME "lkmasg2" // Device name.
 #define CLASS_NAME "char"	  ///< The device class -- this is a character device drive
-#define BUFFER_SIZE 1024
+#define BUFFER_SIZE 32      // The max size of the buffer
+#define MESSAGE_SIZE 256      // The max size of the message
 
 MODULE_LICENSE("GPL");						 ///< The license type -- this affects available functionality
 MODULE_AUTHOR("John Aedo");					 ///< The author -- visible when you use modinfo
-MODULE_DESCRIPTION("lkmasg1 Kernel Module"); ///< The description -- see modinfo
+MODULE_DESCRIPTION("lkmasg2 Kernel Module"); ///< The description -- see modinfo
 MODULE_VERSION("0.1");						 ///< A version number to inform users
 
 /**
@@ -23,8 +24,8 @@ MODULE_VERSION("0.1");						 ///< A version number to inform users
  */
 static int major_number;
 
-static struct class *lkmasg1Class = NULL;	///< The device-driver class struct pointer
-static struct device *lkmasg1Device = NULL; ///< The device-driver device struct pointer
+static struct class *lkmasg2Class = NULL;	///< The device-driver class struct pointer
+static struct device *lkmasg2Device = NULL; ///< The device-driver device struct pointer
 
 /**
  * Prototype functions for file operations.
@@ -50,6 +51,7 @@ typedef struct {
     char buffer[BUFFER_SIZE];
     int start;
     int end;
+    int full; // if start and end are equal, full determines whether it is empty or full
 } word_buffer;
 
 static word_buffer g_buffer;
@@ -59,37 +61,37 @@ static word_buffer g_buffer;
  */
 int init_module(void)
 {
-	printk(KERN_INFO "lkmasg1: installing module.\n");
+	printk(KERN_INFO "lkmasg2: installing module.\n");
 
 	// Allocate a major number for the device.
 	major_number = register_chrdev(0, DEVICE_NAME, &fops);
 	if (major_number < 0)
 	{
-		printk(KERN_ALERT "lkmasg1 could not register number.\n");
+		printk(KERN_ALERT "lkmasg2 could not register number.\n");
 		return major_number;
 	}
-	printk(KERN_INFO "lkmasg1: registered correctly with major number %d\n", major_number);
+	printk(KERN_INFO "lkmasg2: registered correctly with major number %d\n", major_number);
 
 	// Register the device class
-	lkmasg1Class = class_create(THIS_MODULE, CLASS_NAME);
-	if (IS_ERR(lkmasg1Class))
+	lkmasg2Class = class_create(THIS_MODULE, CLASS_NAME);
+	if (IS_ERR(lkmasg2Class))
 	{ // Check for error and clean up if there is
 		unregister_chrdev(major_number, DEVICE_NAME);
 		printk(KERN_ALERT "Failed to register device class\n");
-		return PTR_ERR(lkmasg1Class); // Correct way to return an error on a pointer
+		return PTR_ERR(lkmasg2Class); // Correct way to return an error on a pointer
 	}
-	printk(KERN_INFO "lkmasg1: device class registered correctly\n");
+	printk(KERN_INFO "lkmasg2: device class registered correctly\n");
 
 	// Register the device driver
-	lkmasg1Device = device_create(lkmasg1Class, NULL, MKDEV(major_number, 0), NULL, DEVICE_NAME);
-	if (IS_ERR(lkmasg1Device))
+	lkmasg2Device = device_create(lkmasg2Class, NULL, MKDEV(major_number, 0), NULL, DEVICE_NAME);
+	if (IS_ERR(lkmasg2Device))
 	{								 // Clean up if there is an error
-		class_destroy(lkmasg1Class); // Repeated code but the alternative is goto statements
+		class_destroy(lkmasg2Class); // Repeated code but the alternative is goto statements
 		unregister_chrdev(major_number, DEVICE_NAME);
 		printk(KERN_ALERT "Failed to create the device\n");
-		return PTR_ERR(lkmasg1Device);
+		return PTR_ERR(lkmasg2Device);
 	}
-	printk(KERN_INFO "lkmasg1: device class created correctly\n"); // Made it! device was initialized
+	printk(KERN_INFO "lkmasg2: device class created correctly\n"); // Made it! device was initialized
 
 	return 0;
 }
@@ -99,12 +101,12 @@ int init_module(void)
  */
 void cleanup_module(void)
 {
-	printk(KERN_INFO "lkmasg1: removing module.\n");
-	device_destroy(lkmasg1Class, MKDEV(major_number, 0)); // remove the device
-	class_unregister(lkmasg1Class);						  // unregister the device class
-	class_destroy(lkmasg1Class);						  // remove the device class
+	printk(KERN_INFO "lkmasg2: removing module.\n");
+	device_destroy(lkmasg2Class, MKDEV(major_number, 0)); // remove the device
+	class_unregister(lkmasg2Class);						  // unregister the device class
+	class_destroy(lkmasg2Class);						  // remove the device class
 	unregister_chrdev(major_number, DEVICE_NAME);		  // unregister the major number
-	printk(KERN_INFO "lkmasg1: Goodbye from the LKM!\n");
+	printk(KERN_INFO "lkmasg2: Goodbye from the LKM!\n");
 	unregister_chrdev(major_number, DEVICE_NAME);
 	return;
 }
@@ -115,12 +117,14 @@ void cleanup_module(void)
 static int open(struct inode *inodep, struct file *filep)
 {
       
+    // initialize the buffer
     g_buffer = 
     (word_buffer){
         .start = 0,
         .end = 0,
+        .full = 0
     };
-	printk(KERN_INFO "lkmasg1: device opened.\n");
+	printk(KERN_INFO "lkmasg2: device opened.\n");
 	return 0;
 }
 
@@ -129,7 +133,8 @@ static int open(struct inode *inodep, struct file *filep)
  */
 static int close(struct inode *inodep, struct file *filep)
 {
-	printk(KERN_INFO "lkmasg1: device closed.\n");
+    // didn't allocate any memory so no need to do anything
+	printk(KERN_INFO "lkmasg2: device closed.\n");
 	return 0;
 }
 
@@ -138,22 +143,38 @@ static int close(struct inode *inodep, struct file *filep)
  */
 static ssize_t read(struct file *filep, char *buffer, size_t len, loff_t *offset)
 {
-    ssize_t ret = 0;
+    ssize_t ind = 0;
 
-    while(g_buffer.start != g_buffer.end && g_buffer.buffer[g_buffer.start] != '\0'){
-        *buffer = g_buffer.buffer[g_buffer.start++];
+    char message[MESSAGE_SIZE];
+    unsigned long err;
+
+    // read as long as it's not empty and string doesn't reach end
+    while((g_buffer.start != g_buffer.end || g_buffer.full) && g_buffer.buffer[g_buffer.start] != '\0'){
+        message[ind] = g_buffer.buffer[g_buffer.start++];
         g_buffer.start %= BUFFER_SIZE;
-        buffer++;
-        ret++;
+        ind++;
+        //we have read a character so it can't be full
+        g_buffer.full = 0;
     }
-    *buffer = '\0';
+    // add end to buffer
+    message[ind] = '\0';
+
+    err = copy_to_user(buffer, message, ind+1);
+
+    if(err != 0){
+        printk(KERN_INFO "lkmasg2: could not write to buffer");
+    }
+
+    // in case while loop stopped because it became empty
     if(g_buffer.start != g_buffer.end){
         g_buffer.start++;
         g_buffer.start %= BUFFER_SIZE;
-        ret++;
+        ind++;
     }
 
-	return ret;
+
+	printk(KERN_INFO "lkmasg2: read stub. start: %d, end: %d", g_buffer.start, g_buffer.end);
+	return ind;
 }
 
 /*
@@ -170,23 +191,39 @@ static ssize_t write(struct file *filep, const char *buffer, size_t len, loff_t 
     // }
     //
     int i;
+    char message[MESSAGE_SIZE];
+    unsigned long err;
+    err = copy_from_user(message, buffer, len+1); 
 
-	printk(KERN_INFO "writing length: %zu", len);
-    for(i = 0; i < len + 1 && *buffer != '\0'; i++, buffer++){
+    if(err != 0){
+        printk(KERN_INFO "lkmasg2: error copying from user");
+        return 0;
+    }
+
+
+
+    // no more writing
+    if(g_buffer.full)
+        return 0;
+
+       
+    for(i = 0; i < len + 1 && message[i] != '\0'; i++){
         if((g_buffer.end + 1) % BUFFER_SIZE == g_buffer.start){ // when buffer is full, no more writing.
             break;
         }
-        g_buffer.buffer[g_buffer.end] = *buffer; 
+        g_buffer.buffer[g_buffer.end] = message[i]; 
         g_buffer.end+=1;
         g_buffer.end %= BUFFER_SIZE;
 
     }
-    g_buffer.buffer[g_buffer.end] = '\0';
-    if((g_buffer.end+1) % BUFFER_SIZE != g_buffer.start){
-        g_buffer.end+=1;
+    if((g_buffer.end + 1) % BUFFER_SIZE == g_buffer.start){ // this means we've filled it up
+        g_buffer.full = 1;
+    
     }
+    g_buffer.buffer[g_buffer.end] = '\0';
+    g_buffer.end+=1;
     g_buffer.end %= BUFFER_SIZE;
-	printk(KERN_INFO "write stub");
+	printk(KERN_INFO "lkmasg2: write stub. start: %d, end: %d", g_buffer.start, g_buffer.end);
 	return i;
 }
 
