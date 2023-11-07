@@ -126,10 +126,10 @@ void cleanup_module(void)
 static int open(struct inode *inodep, struct file *filep)
 {
       
-    global_buffer = 
+    g_buffer = 
     (word_buffer){
-        .buffer_start = 0,
-        .buffer_end = 0,
+        .start = 0,
+        .end = 0,
         .words.ind = 0
     };
 	printk(KERN_INFO "lkmasg1: device opened.\n");
@@ -157,9 +157,20 @@ static ssize_t read(struct file *filep, char *buffer, size_t len, loff_t *offset
     //     len--;
     //     buffer++;
     // }
+    //
+    if(g_buffer.words.ind == 0){
+        return 0;
+    }
+    ssize_t ret = 0;
+    word_location loc = g_buffer.words.list[--g_buffer.words.ind];
+    while(g_buffer.start != loc.end){
+        *buffer = g_buffer.buffer[g_buffer.start++];
+        g_buffer.start %= BUFFER_SIZE;
+        buffer++;
+    }
 
 	printk(KERN_INFO "read stub");
-	return 0;
+	return ret;
 }
 
 /*
@@ -190,8 +201,8 @@ static ssize_t write(struct file *filep, const char *buffer, size_t len, loff_t 
 
     }
     newWord.end = g_buffer.end;
-    g_buffer.words.ind++;
     g_buffer.words.list[g_buffer.words.ind] = newWord;
+    g_buffer.words.ind++;
 	printk(KERN_INFO "write stub");
 	return i;
 }
