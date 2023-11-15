@@ -11,7 +11,7 @@
 #include <linux/uaccess.h>	  // User access copy function support.
 #define DEVICE_NAME "lkmasg2" // Device name.
 #define CLASS_NAME "char"	  ///< The device class -- this is a character device drive
-#define BUFFER_SIZE 32      // The max size of the buffer
+#define BUFFER_SIZE 1024      // The max size of the buffer
 #define MESSAGE_SIZE 256      // The max size of the message
 
 MODULE_LICENSE("GPL");						 ///< The license type -- this affects available functionality
