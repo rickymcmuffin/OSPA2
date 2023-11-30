@@ -21,9 +21,7 @@ MODULE_AUTHOR("John Aedo");					 ///< The author -- visible when you use modinfo
 MODULE_DESCRIPTION("charkmod_out Kernel Module"); ///< The description -- see modinfo
 MODULE_VERSION("0.1");						 ///< A version number to inform users
 
-static DEFINE_MUTEX(ebbchar_mutex);  /// A macro that is used to declare a new mutex that is visible in this file
-                                     /// results in a semaphore variable ebbchar_mutex with value 1 (unlocked)
-                                     /// DEFINE_MUTEX_LOCKED() results in a variable with value 0 (locked)
+
 
 /**
  * Important variables that store data and keep track of relevant information.
@@ -39,6 +37,8 @@ static struct device *charkmod_outDevice = NULL; ///< The device-driver device s
 static int open(struct inode *, struct file *);
 static int close(struct inode *, struct file *);
 static ssize_t read(struct file *, char *, size_t, loff_t *);
+
+extern struct mutex ebbchar_mutex;
 
 /**
  * File operations structure and the functions it points to.
@@ -114,13 +114,10 @@ void cleanup_module(void)
 static int open(struct inode *inodep, struct file *filep)
 {
       
-    // initialize the buffer
-    // g_buffer = 
-    // (word_buffer){
-    //     .start = 0,
-    //     .end = 0,
-    //     .full = 0
-    // };
+    while(!mutex_trylock(&ebbchar_mutex)){    /// Try to acquire the mutex (i.e., put the lock on/down)
+                                          /// returns 1 if successful and 0 if there is contention
+        printk(KERN_ALERT "charkmod_out: Device in use by another process\n");
+    }
 	printk(KERN_INFO "charkmod_out: device opened.\n");
 	return 0;
 }
@@ -131,6 +128,7 @@ static int open(struct inode *inodep, struct file *filep)
 static int close(struct inode *inodep, struct file *filep)
 {
     // didn't allocate any memory so no need to do anything
+    mutex_unlock(&ebbchar_mutex);          /// Releases the mutex (i.e., the lock goes up)
 	printk(KERN_INFO "charkmod_out: device closed.\n");
 	return 0;
 }
