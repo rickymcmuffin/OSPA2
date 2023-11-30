@@ -21,7 +21,7 @@ MODULE_AUTHOR("John Aedo");					 ///< The author -- visible when you use modinfo
 MODULE_DESCRIPTION("charkmod_in Kernel Module"); ///< The description -- see modinfo
 MODULE_VERSION("0.1");						 ///< A version number to inform users
 
-static DEFINE_MUTEX(ebbchar_mutex);  /// A macro that is used to declare a new mutex that is visible in this file
+DEFINE_MUTEX(ebbchar_mutex);  /// A macro that is used to declare a new mutex that is visible in this file
                                      /// results in a semaphore variable ebbchar_mutex with value 1 (unlocked)
                                      /// DEFINE_MUTEX_LOCKED() results in a variable with value 0 (locked)
 
