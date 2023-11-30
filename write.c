@@ -9,6 +9,7 @@
 #include <linux/kernel.h>	  // Kernel header for convenient functions.
 #include <linux/fs.h>		  // File-system support.
 #include <linux/uaccess.h>	  // User access copy function support.
+#include "struct.h"
 #define DEVICE_NAME "lkmasg2" // Device name.
 #define CLASS_NAME "char"	  ///< The device class -- this is a character device drive
 #define BUFFER_SIZE 1024      // The max size of the buffer
@@ -32,7 +33,6 @@ static struct device *lkmasg2Device = NULL; ///< The device-driver device struct
  */
 static int open(struct inode *, struct file *);
 static int close(struct inode *, struct file *);
-static ssize_t read(struct file *, char *, size_t, loff_t *);
 static ssize_t write(struct file *, const char *, size_t, loff_t *);
 
 /**
@@ -43,18 +43,10 @@ static struct file_operations fops =
 		.owner = THIS_MODULE,
 		.open = open,
 		.release = close,
-		.read = read,
 		.write = write,
 };
 
-typedef struct {
-    char buffer[BUFFER_SIZE];
-    int start;
-    int end;
-    int full; // if start and end are equal, full determines whether it is empty or full
-} word_buffer;
-
-static word_buffer g_buffer;
+extern word_buffer g_buffer;
 
 /**
  * Initializes module at installation
@@ -136,45 +128,6 @@ static int close(struct inode *inodep, struct file *filep)
     // didn't allocate any memory so no need to do anything
 	printk(KERN_INFO "lkmasg2: device closed.\n");
 	return 0;
-}
-
-/*
- * Reads from device, displays in userspace, and deletes the read data
- */
-static ssize_t read(struct file *filep, char *buffer, size_t len, loff_t *offset)
-{
-    ssize_t ind = 0;
-
-    char message[MESSAGE_SIZE];
-    unsigned long err;
-
-    // read as long as it's not empty and string doesn't reach end
-    while((g_buffer.start != g_buffer.end || g_buffer.full) && g_buffer.buffer[g_buffer.start] != '\0'){
-        message[ind] = g_buffer.buffer[g_buffer.start++];
-        g_buffer.start %= BUFFER_SIZE;
-        ind++;
-        //we have read a character so it can't be full
-        g_buffer.full = 0;
-    }
-    // add end to buffer
-    message[ind] = '\0';
-
-    err = copy_to_user(buffer, message, ind+1);
-
-    if(err != 0){
-        printk(KERN_INFO "lkmasg2: could not write to buffer");
-    }
-
-    // in case while loop stopped because it became empty
-    if(g_buffer.start != g_buffer.end){
-        g_buffer.start++;
-        g_buffer.start %= BUFFER_SIZE;
-        ind++;
-    }
-
-
-	printk(KERN_INFO "lkmasg2: read stub. start: %d, end: %d", g_buffer.start, g_buffer.end);
-	return ind;
 }
 
 /*

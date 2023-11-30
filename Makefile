@@ -1,4 +1,4 @@
-obj-m += lkmasg2.o
+obj-m += read.o write.o
 
 all:
 	make -C /lib/modules/$(shell uname -r)/build M=$(PWD) modules

@@ -26,7 +26,8 @@ def readDevice(readBytes = 5, loopCount = 10):
         device = os.open("/dev/charkmod-out", os.O_RDONLY)
         fileContents = os.read(device, readBytes)
         os.close(device)
-        print(f"read[{x}]: [{fileContents.decode("UTF-8")}]")
+        print(f'read[{x}]: [{fileContents.decode("UTF-8")}]')
+
         
 def writeDevice(inputString, loopCount = 10):
     for x in range(loopCount):
