@@ -1,5 +1,7 @@
 make all
 
-sudo insmod lkmasg2.ko
-sudo ./test /dev/lkmasg2
-sudo rmmod lkmasg2
+sudo insmod charkmod-in.ko
+sudo insmod charkmod-out.ko
+sudo python3 test.py 
+sudo rmmod charkmod_in
+sudo rmmod charkmod_out
