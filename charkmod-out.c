@@ -135,7 +135,7 @@ static int close(struct inode *inodep, struct file *filep)
  */
 static ssize_t read(struct file *filep, char *buffer, size_t len, loff_t *offset)
 {
-    printk(KERN_INFO "charkmod_out: g_buffer %d %d", g_buffer.start, g_buffer.end);
+    // printk(KERN_INFO "charkmod_out: g_buffer %d %d", g_buffer.start, g_buffer.end);
     ssize_t ind = 0;
 
     char message[MESSAGE_SIZE];

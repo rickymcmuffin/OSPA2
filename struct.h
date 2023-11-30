@@ -10,7 +10,7 @@ typedef struct {
     int full; // if start and end are equal, full determines whether it is empty or full
 } word_buffer;
 
-word_buffer g_buffer;
+
 
 #endif /* SHARED_MEMORY_H */
 

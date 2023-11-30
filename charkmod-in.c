@@ -46,7 +46,8 @@ static struct file_operations fops =
 		.write = write,
 };
 
-extern word_buffer g_buffer;
+word_buffer g_buffer;
+EXPORT_SYMBOL(g_buffer);
 
 /**
  * Initializes module at installation
