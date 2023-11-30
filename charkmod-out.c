@@ -9,6 +9,7 @@
 #include <linux/kernel.h>	  // Kernel header for convenient functions.
 #include <linux/fs.h>		  // File-system support.
 #include <linux/uaccess.h>	  // User access copy function support.
+#include <linux/mutex.h>                              
 #include "struct.h"
 #define DEVICE_NAME "charkmod-out" // Device name.
 #define CLASS_NAME "charr"	  ///< The device class -- this is a character device drive
@@ -19,6 +20,10 @@ MODULE_LICENSE("GPL");						 ///< The license type -- this affects available fun
 MODULE_AUTHOR("John Aedo");					 ///< The author -- visible when you use modinfo
 MODULE_DESCRIPTION("charkmod_out Kernel Module"); ///< The description -- see modinfo
 MODULE_VERSION("0.1");						 ///< A version number to inform users
+
+static DEFINE_MUTEX(ebbchar_mutex);  /// A macro that is used to declare a new mutex that is visible in this file
+                                     /// results in a semaphore variable ebbchar_mutex with value 1 (unlocked)
+                                     /// DEFINE_MUTEX_LOCKED() results in a variable with value 0 (locked)
 
 /**
  * Important variables that store data and keep track of relevant information.

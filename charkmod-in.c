@@ -9,6 +9,7 @@
 #include <linux/kernel.h>	  // Kernel header for convenient functions.
 #include <linux/fs.h>		  // File-system support.
 #include <linux/uaccess.h>	  // User access copy function support.
+#include <linux/mutex.h>
 #include "struct.h"
 #define DEVICE_NAME "charkmod-in" // Device name.
 #define CLASS_NAME "charw"	  ///< The device class -- this is a character device drive
@@ -86,12 +87,15 @@ int init_module(void)
 	}
 	printk(KERN_INFO "charkmod_in: device class created correctly\n"); // Made it! device was initialized
 
+    // creates the buffer
     g_buffer = 
     (word_buffer){
         .start = 0,
         .end = 0,
         .full = 0
     };
+
+    mutex_init(&ebbchar_mutex);       /// Initialize the mutex lock dynamically at runtime
 
 	return 0;
 }
@@ -108,6 +112,7 @@ void cleanup_module(void)
 	unregister_chrdev(major_number, DEVICE_NAME);		  // unregister the major number
 	printk(KERN_INFO "charkmod_in: Goodbye from the LKM!\n");
 	unregister_chrdev(major_number, DEVICE_NAME);
+    mutex_destroy(&ebbchar_mutex);        /// destroy the dynamically-allocated mutex
 	return;
 }
 
@@ -118,6 +123,10 @@ static int open(struct inode *inodep, struct file *filep)
 {
       
     // initialize the buffer
+    while(!mutex_trylock(&ebbchar_mutex)){    /// Try to acquire the mutex (i.e., put the lock on/down)
+                                          /// returns 1 if successful and 0 if there is contention
+        printk(KERN_ALERT "charkmod_in: Device in use by another process\n");
+    }
 	printk(KERN_INFO "charkmod_in: device opened.\n");
 	return 0;
 }
@@ -128,6 +137,7 @@ static int open(struct inode *inodep, struct file *filep)
 static int close(struct inode *inodep, struct file *filep)
 {
     // didn't allocate any memory so no need to do anything
+    mutex_unlock(&ebbchar_mutex);          /// Releases the mutex (i.e., the lock goes up)
 	printk(KERN_INFO "charkmod_in: device closed.\n");
 	return 0;
 }
