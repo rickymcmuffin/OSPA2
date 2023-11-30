@@ -37,8 +37,8 @@ def writeDevice(inputString, loopCount = 10):
         print(f"write[{x}]: {bytesWritten} bytes written.")
 
 def main():
-    writerThread = Thread(target=writeDevice, args=("Hello", 100))
-    readerThread = Thread(target=readDevice, args=(3, 120))
+    writerThread = Thread(target=writeDevice, args=("Hello", 10))
+    readerThread = Thread(target=readDevice, args=(3, 12))
 
     writerThread.start()
     readerThread.start()

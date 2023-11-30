@@ -166,17 +166,21 @@ static ssize_t write(struct file *filep, const char *buffer, size_t len, loff_t 
     unsigned long err;
     err = copy_from_user(message, buffer, len); 
 
+
+
     if(err != 0){
         printk(KERN_INFO "charkmod_in: error copying from user");
         return 0;
     }
-    printk(KERN_INFO "charkmod_in: g_buffer %d %d", g_buffer.start, g_buffer.end);
 
+    printk(KERN_INFO "charkmod_in: writing %s", message);
 
 
     // no more writing
-    if(g_buffer.full)
+    if(g_buffer.full){
+        printk(KERN_INFO "charkmod_in: buffer full");
         return 0;
+    }
 
        
     for(i = 0; i < len ; i++){
