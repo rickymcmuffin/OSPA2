@@ -114,9 +114,10 @@ void cleanup_module(void)
 static int open(struct inode *inodep, struct file *filep)
 {
       
-    while(!mutex_trylock(&ebbchar_mutex)){    /// Try to acquire the mutex (i.e., put the lock on/down)
-                                          /// returns 1 if successful and 0 if there is contention
-        printk(KERN_ALERT "charkmod_out: Device in use by another process\n");
+    int err = mutex_lock_interruptible(&ebbchar_mutex);
+    if(err){
+        printk(KERN_ALERT "charkmod_out: error acquiring lock\n");
+
     }
 	printk(KERN_INFO "charkmod_out: device opened.\n");
 	return 0;

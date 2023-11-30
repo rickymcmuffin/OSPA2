@@ -128,11 +128,10 @@ void cleanup_module(void)
  */
 static int open(struct inode *inodep, struct file *filep)
 {
-      
-    // initialize the buffer
-    while(!mutex_trylock(&ebbchar_mutex)){    /// Try to acquire the mutex (i.e., put the lock on/down)
-                                          /// returns 1 if successful and 0 if there is contention
-        printk(KERN_ALERT "charkmod_in: Device in use by another process\n");
+    int err = mutex_lock_interruptible(&ebbchar_mutex);
+    if(err){
+        printk(KERN_ALERT "charkmod_in: error acquiring lock\n");
+
     }
 	printk(KERN_INFO "charkmod_in: device opened.\n");
 	return 0;
@@ -181,7 +180,6 @@ static ssize_t write(struct file *filep, const char *buffer, size_t len, loff_t 
 
        
     for(i = 0; i < len ; i++){
-        printk(KERN_INFO "charkmod_in: adding char %d", i);
         if((g_buffer.end + 1) % BUFFER_SIZE == g_buffer.start){ // when buffer is full, no more writing.
             break;
         }
