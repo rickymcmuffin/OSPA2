@@ -110,12 +110,12 @@ static int open(struct inode *inodep, struct file *filep)
 {
       
     // initialize the buffer
-    g_buffer = 
-    (word_buffer){
-        .start = 0,
-        .end = 0,
-        .full = 0
-    };
+    // g_buffer = 
+    // (word_buffer){
+    //     .start = 0,
+    //     .end = 0,
+    //     .full = 0
+    // };
 	printk(KERN_INFO "charkmod_out: device opened.\n");
 	return 0;
 }
@@ -135,13 +135,14 @@ static int close(struct inode *inodep, struct file *filep)
  */
 static ssize_t read(struct file *filep, char *buffer, size_t len, loff_t *offset)
 {
+    printk(KERN_INFO "charkmod_out: g_buffer %d %d", g_buffer.start, g_buffer.end);
     ssize_t ind = 0;
 
     char message[MESSAGE_SIZE];
     unsigned long err;
 
     // read as long as it's not empty and string doesn't reach end
-    while((g_buffer.start != g_buffer.end || g_buffer.full) && g_buffer.buffer[g_buffer.start] != '\0'){
+    while((g_buffer.start != g_buffer.end || g_buffer.full) && len-ind > 0){
         message[ind] = g_buffer.buffer[g_buffer.start++];
         g_buffer.start %= BUFFER_SIZE;
         ind++;

@@ -85,6 +85,13 @@ int init_module(void)
 	}
 	printk(KERN_INFO "charkmod_in: device class created correctly\n"); // Made it! device was initialized
 
+    g_buffer = 
+    (word_buffer){
+        .start = 0,
+        .end = 0,
+        .full = 0
+    };
+
 	return 0;
 }
 
@@ -110,12 +117,6 @@ static int open(struct inode *inodep, struct file *filep)
 {
       
     // initialize the buffer
-    g_buffer = 
-    (word_buffer){
-        .start = 0,
-        .end = 0,
-        .full = 0
-    };
 	printk(KERN_INFO "charkmod_in: device opened.\n");
 	return 0;
 }
@@ -146,12 +147,13 @@ static ssize_t write(struct file *filep, const char *buffer, size_t len, loff_t 
     int i;
     char message[MESSAGE_SIZE];
     unsigned long err;
-    err = copy_from_user(message, buffer, len+1); 
+    err = copy_from_user(message, buffer, len); 
 
     if(err != 0){
         printk(KERN_INFO "charkmod_in: error copying from user");
         return 0;
     }
+    printk(KERN_INFO "charkmod_in: g_buffer %d %d", g_buffer.start, g_buffer.end);
 
 
 
@@ -160,7 +162,8 @@ static ssize_t write(struct file *filep, const char *buffer, size_t len, loff_t 
         return 0;
 
        
-    for(i = 0; i < len + 1 && message[i] != '\0'; i++){
+    for(i = 0; i < len ; i++){
+        printk(KERN_INFO "charkmod_in: adding char %d", i);
         if((g_buffer.end + 1) % BUFFER_SIZE == g_buffer.start){ // when buffer is full, no more writing.
             break;
         }
@@ -173,9 +176,9 @@ static ssize_t write(struct file *filep, const char *buffer, size_t len, loff_t 
         g_buffer.full = 1;
     
     }
-    g_buffer.buffer[g_buffer.end] = '\0';
-    g_buffer.end+=1;
-    g_buffer.end %= BUFFER_SIZE;
+    // g_buffer.buffer[g_buffer.end] = '\0';
+    // g_buffer.end+=1;
+    // g_buffer.end %= BUFFER_SIZE;
 	printk(KERN_INFO "charkmod_in: write stub. start: %d, end: %d", g_buffer.start, g_buffer.end);
 	return i;
 }
