@@ -10,10 +10,9 @@
 #include <linux/fs.h>		  // File-system support.
 #include <linux/uaccess.h>	  // User access copy function support.
 #include <linux/mutex.h>                              
-#include "struct.h"
+#include "shared_buffer.h"
 #define DEVICE_NAME "charkmod-out" // Device name.
 #define CLASS_NAME "charr"	  ///< The device class -- this is a character device drive
-#define BUFFER_SIZE 1024      // The max size of the buffer
 #define MESSAGE_SIZE 256      // The max size of the message
 
 MODULE_LICENSE("GPL");						 ///< The license type -- this affects available functionality
@@ -119,7 +118,7 @@ static int open(struct inode *inodep, struct file *filep)
         printk(KERN_ALERT "charkmod_out: error acquiring lock\n");
 
     }
-	printk(KERN_INFO "charkmod_out: device opened.\n");
+	printk(KERN_INFO "charkmod_out: acquired lock.\n");
 	return 0;
 }
 
@@ -130,7 +129,7 @@ static int close(struct inode *inodep, struct file *filep)
 {
     // didn't allocate any memory so no need to do anything
     mutex_unlock(&ebbchar_mutex);          /// Releases the mutex (i.e., the lock goes up)
-	printk(KERN_INFO "charkmod_out: device closed.\n");
+	printk(KERN_INFO "charkmod_out: exiting read.\n");
 	return 0;
 }
 
@@ -144,6 +143,12 @@ static ssize_t read(struct file *filep, char *buffer, size_t len, loff_t *offset
 
     char message[MESSAGE_SIZE];
     unsigned long err;
+
+    if(g_buffer.start == g_buffer.end && !g_buffer.full){
+        printk(KERN_INFO "charkmod_out: buffer is empty, unable to read");
+        
+        return 0;
+    }
 
     // read as long as it's not empty and string doesn't reach end
     while((g_buffer.start != g_buffer.end || g_buffer.full) && len-ind > 0){
@@ -160,6 +165,7 @@ static ssize_t read(struct file *filep, char *buffer, size_t len, loff_t *offset
 
     if(err != 0){
         printk(KERN_INFO "charkmod_out: could not write to buffer");
+        return 0;
     }
 
     // in case while loop stopped because it became empty
@@ -168,9 +174,12 @@ static ssize_t read(struct file *filep, char *buffer, size_t len, loff_t *offset
     //     g_buffer.start %= BUFFER_SIZE;
     //     ind++;
     // }
+    
+    if(ind < len){
+	    printk(KERN_INFO "charkmod_out: Buffer has %d bytes of content, requested %d.", ind, len);
+    }
 
-
-	printk(KERN_INFO "charkmod_out: read stub. start: %d, end: %d", g_buffer.start, g_buffer.end);
+	printk(KERN_INFO "charkmod_out: read %d bytes from buffer", ind);
 	return ind;
 }
 
