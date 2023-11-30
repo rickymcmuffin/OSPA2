@@ -21,6 +21,12 @@ MODULE_AUTHOR("John Aedo");					 ///< The author -- visible when you use modinfo
 MODULE_DESCRIPTION("charkmod_in Kernel Module"); ///< The description -- see modinfo
 MODULE_VERSION("0.1");						 ///< A version number to inform users
 
+static DEFINE_MUTEX(ebbchar_mutex);  /// A macro that is used to declare a new mutex that is visible in this file
+                                     /// results in a semaphore variable ebbchar_mutex with value 1 (unlocked)
+                                     /// DEFINE_MUTEX_LOCKED() results in a variable with value 0 (locked)
+
+EXPORT_SYMBOL(ebbchar_mutex);
+
 /**
  * Important variables that store data and keep track of relevant information.
  */
@@ -112,6 +118,7 @@ void cleanup_module(void)
 	unregister_chrdev(major_number, DEVICE_NAME);		  // unregister the major number
 	printk(KERN_INFO "charkmod_in: Goodbye from the LKM!\n");
 	unregister_chrdev(major_number, DEVICE_NAME);
+
     mutex_destroy(&ebbchar_mutex);        /// destroy the dynamically-allocated mutex
 	return;
 }
