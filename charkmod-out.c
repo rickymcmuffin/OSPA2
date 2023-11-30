@@ -159,11 +159,11 @@ static ssize_t read(struct file *filep, char *buffer, size_t len, loff_t *offset
     }
 
     // in case while loop stopped because it became empty
-    if(g_buffer.start != g_buffer.end){
-        g_buffer.start++;
-        g_buffer.start %= BUFFER_SIZE;
-        ind++;
-    }
+    // if(g_buffer.start != g_buffer.end){
+    //     g_buffer.start++;
+    //     g_buffer.start %= BUFFER_SIZE;
+    //     ind++;
+    // }
 
 
 	printk(KERN_INFO "charkmod_out: read stub. start: %d, end: %d", g_buffer.start, g_buffer.end);
