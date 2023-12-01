@@ -1,94 +1,71 @@
-/**
- * @file   test.c
- * @author Derek Molloy
- * @date   7 April 2015
- * @version 0.1
- * @brief  A Linux user space program that communicates with the charkmod.c LKM. It passes a
- * string to the LKM and reads the response from the LKM. For this example to work the device
- * must be called /dev/charkmod.
- * @see http://www.derekmolloy.ie/ for a full description and follow-up descriptions.
- *
- * Adapted for COP 4600 by Dr. John Aedo
- */
 #include <stdio.h>
 #include <stdlib.h>
-#include <errno.h>
 #include <fcntl.h>
-#include <string.h>
 #include <unistd.h>
+#include <pthread.h>
+#include <string.h>
 
-#define BUFFER_LENGTH 256           ///< The buffer length (crude but fine)
-static char receive[BUFFER_LENGTH]; ///< The receive buffer from the LKM
+#define READ_SIZE 3
+#define BUFFER_SIZE 1024
 
-int main(int argc, char *argv[])
-{
-    if (argc != 2)
-    {
-        printf("Usage: test <path to device>\n");
-        exit(0);
-    }
-    char *devicepath = argv[1];
+void *readDevice(void *args) {
+    int readBytes = *((int *)args);
+    // int loopCount = *((int *)(args + sizeof(int)));
+    int loopCount = 15;
 
-    int ret, fd;
-    char stringToSend[BUFFER_LENGTH];
-    strncpy(stringToSend, "", sizeof(stringToSend));
-    printf("Starting device test code example...\n");
-    fd = open(devicepath, O_RDWR); // Open the device with read/write access
-    if (fd < 0)
-    {
-        perror("Failed to open the device...");
-        return errno;
+    for (int x = 0; x < loopCount; x++) {
+        int device = open("/dev/charkmod-out", O_RDONLY);
+        char fileContents[READ_SIZE + 1]; // Buffer for read contents + null terminator
+        ssize_t bytesRead = read(device, fileContents, readBytes);
+        fileContents[bytesRead] = '\0'; // Null-terminate the string
+        close(device);
+        printf("read[%d]: [%s]\n", x, fileContents);
     }
-    printf("Type in a short string to send to the kernel module:\n");
-    scanf("%[^\n]%*c", stringToSend); // Read in a string (with spaces)
-    printf("Writing message to the device [%s].\n", stringToSend);
-    ret = write(fd, stringToSend, strlen(stringToSend)); // Send the string to the LKM
-    if (ret < 0)
-    {
-        perror("Failed to write the message to the device.");
-        return errno;
-    }
-    
-    for(int i = 0; i < 10; i++){
-        if(i == 3 || i == 7){
-            printf("Reading from the device...\n");
-            ret = read(fd, receive, BUFFER_LENGTH); // Read the response from the LKM
-            if (ret < 0)
-            {
-                perror("Failed to read the message from the device.");
-                return errno;
-            }
-            printf("The received message is: [%s]\n", receive);
-        }
+    pthread_exit(NULL);
+}
 
-        stringToSend[0] = i+'0';
-        stringToSend[1] = 'a';
-        stringToSend[2] = 'p';
-        stringToSend[3] = 'p';
-        stringToSend[4] = 'l';
-        stringToSend[5] = 'e';
-        stringToSend[6] = '\0';
-        printf("Writing message to the device [%s].\n", stringToSend);
-        ret = write(fd, stringToSend, strlen(stringToSend)); // Send the string to the LKM
-        if (ret < 0)
-        {
-            perror("Failed to write the message to the device.");
-            return errno;
-        }
-    }
-    for(int i = 0; i < 11; i++){
-        printf("Press ENTER to read back from the device...\n");
-        getchar();
+void *writeDevice(void *args) {
+    char *inputString = *((char **)args);
+    // int loopCount = *((int *)(args + sizeof(char *)));
+    int loopCount = 10;
 
-        printf("Reading from the device...\n");
-        ret = read(fd, receive, BUFFER_LENGTH); // Read the response from the LKM
-        if (ret < 0)
-        {
-            perror("Failed to read the message from the device.");
-            return errno;
-        }
-        printf("The received message is: [%s]\n", receive);
+    for (int x = 0; x < loopCount; x++) {
+        int device = open("/dev/charkmod-in", O_WRONLY);
+        int bytesWritten = write(device, inputString, strlen(inputString));
+        close(device);
+        printf("write[%d]: %d bytes written.\n", x, bytesWritten);
     }
-    printf("End of the program\n");
+    pthread_exit(NULL);
+}
+
+int main() {
+    pthread_t writerThread, readerThread;
+    int readBytes = READ_SIZE;
+    int loopCount = 4;
+    char *inputString = "Hello";
+
+    // Create threads and pass arguments
+    pthread_create(&writerThread, NULL, writeDevice, (void *)&inputString);
+    pthread_create(&readerThread, NULL, readDevice, (void *)&readBytes);
+
+    // Wait for threads to finish
+    pthread_join(writerThread, NULL);
+    pthread_join(readerThread, NULL);
+
+    printf("Done!\n");
+
+    // Read remaining contents from the device
+    int device = open("/dev/charkmod-out", O_RDONLY);
+    char remainingContents[BUFFER_SIZE];
+    ssize_t bytesRead = read(device, remainingContents, BUFFER_SIZE - 1);
+    close(device);
+
+    if (bytesRead >= 0) {
+        remainingContents[bytesRead] = '\0'; // Null-terminate the string
+        printf("Remaining contents: [%s]\n", remainingContents);
+    } else {
+        perror("Failed to read remaining contents");
+    }
+
     return 0;
 }

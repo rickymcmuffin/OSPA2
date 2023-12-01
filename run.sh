@@ -2,6 +2,6 @@ make all
 
 sudo insmod charkmod-in.ko
 sudo insmod charkmod-out.ko
-sudo python3 test.py 
+sudo ./test
 sudo rmmod charkmod_out
 sudo rmmod charkmod_in
