@@ -12,7 +12,7 @@
 #define DEVICE_NAME "lkmasg2" // Device name.
 #define CLASS_NAME "char"	  ///< The device class -- this is a character device drive
 #define BUFFER_SIZE 1024      // The max size of the buffer
-#define MESSAGE_SIZE 256      // The max size of the message
+#define MESSAGE_SIZE 1024      // The max size of the message
 
 MODULE_LICENSE("GPL");						 ///< The license type -- this affects available functionality
 MODULE_AUTHOR("John Aedo");					 ///< The author -- visible when you use modinfo
@@ -93,6 +93,13 @@ int init_module(void)
 	}
 	printk(KERN_INFO "lkmasg2: device class created correctly\n"); // Made it! device was initialized
 
+    g_buffer = 
+    (word_buffer){
+        .start = 0,
+        .end = 0,
+        .full = 0
+    };
+
 	return 0;
 }
 
@@ -118,12 +125,6 @@ static int open(struct inode *inodep, struct file *filep)
 {
       
     // initialize the buffer
-    g_buffer = 
-    (word_buffer){
-        .start = 0,
-        .end = 0,
-        .full = 0
-    };
 	printk(KERN_INFO "lkmasg2: device opened.\n");
 	return 0;
 }
@@ -149,7 +150,7 @@ static ssize_t read(struct file *filep, char *buffer, size_t len, loff_t *offset
     unsigned long err;
 
     // read as long as it's not empty and string doesn't reach end
-    while((g_buffer.start != g_buffer.end || g_buffer.full) && g_buffer.buffer[g_buffer.start] != '\0'){
+    while((g_buffer.start != g_buffer.end || g_buffer.full) && ind < len-1){
         message[ind] = g_buffer.buffer[g_buffer.start++];
         g_buffer.start %= BUFFER_SIZE;
         ind++;
@@ -166,11 +167,11 @@ static ssize_t read(struct file *filep, char *buffer, size_t len, loff_t *offset
     }
 
     // in case while loop stopped because it became empty
-    if(g_buffer.start != g_buffer.end){
-        g_buffer.start++;
-        g_buffer.start %= BUFFER_SIZE;
-        ind++;
-    }
+    // if(g_buffer.start != g_buffer.end){
+    //     g_buffer.start++;
+    //     g_buffer.start %= BUFFER_SIZE;
+    //     ind++;
+    // }
 
 
 	printk(KERN_INFO "lkmasg2: read stub. start: %d, end: %d", g_buffer.start, g_buffer.end);
@@ -193,7 +194,7 @@ static ssize_t write(struct file *filep, const char *buffer, size_t len, loff_t 
     int i;
     char message[MESSAGE_SIZE];
     unsigned long err;
-    err = copy_from_user(message, buffer, len+1); 
+    err = copy_from_user(message, buffer, len); 
 
     if(err != 0){
         printk(KERN_INFO "lkmasg2: error copying from user");
@@ -207,8 +208,9 @@ static ssize_t write(struct file *filep, const char *buffer, size_t len, loff_t 
         return 0;
 
        
-    for(i = 0; i < len + 1 && message[i] != '\0'; i++){
+    for(i = 0; i < len && message[i] != '\0'; i++){
         if((g_buffer.end + 1) % BUFFER_SIZE == g_buffer.start){ // when buffer is full, no more writing.
+            i++;
             break;
         }
         g_buffer.buffer[g_buffer.end] = message[i]; 
@@ -216,13 +218,12 @@ static ssize_t write(struct file *filep, const char *buffer, size_t len, loff_t 
         g_buffer.end %= BUFFER_SIZE;
 
     }
+    printk(KERN_INFO "lkmasg2: buffer full: %d", (g_buffer.end + 1) % BUFFER_SIZE == g_buffer.start);
     if((g_buffer.end + 1) % BUFFER_SIZE == g_buffer.start){ // this means we've filled it up
+        printk(KERN_INFO "lkmasg2: buffer became full");
         g_buffer.full = 1;
     
     }
-    g_buffer.buffer[g_buffer.end] = '\0';
-    g_buffer.end+=1;
-    g_buffer.end %= BUFFER_SIZE;
 	printk(KERN_INFO "lkmasg2: write stub. start: %d, end: %d", g_buffer.start, g_buffer.end);
 	return i;
 }
